@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a1020">
+  <title>Trading Bridge Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">TradingView → MT5 / Exness</p>
+        <h1>Trading Bridge <span>Control Center</span></h1>
+      </div>
+      <div class="topbar-actions">
+        <span id="last-updated" class="last-updated">Conectando…</span>
+        <button id="refresh-button" class="button button-quiet" type="button">Actualizar</button>
+        <button id="logout-button" class="button button-quiet" type="button">Salir</button>
+      </div>
+    </header>
+
+    <main id="dashboard" hidden>
+      <section class="status-strip" aria-label="Estado del sistema">
+        <article class="status-item" id="bridge-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div><small>Bridge</small><strong>Comprobando</strong></div>
+        </article>
+        <article class="status-item" id="mt5-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div><small>MT5</small><strong>Comprobando</strong></div>
+        </article>
+        <article class="status-item" id="account-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div><small>Cuenta</small><strong>Comprobando</strong></div>
+        </article>
+        <article class="status-item" id="tv-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div><small>TradingView</small><strong>Esperando señal</strong></div>
+        </article>
+      </section>
+
+      <section class="metric-grid" aria-label="Resumen de cuenta">
+        <article class="metric-card">
+          <p>Balance</p>
+          <strong id="balance-value">—</strong>
+          <span id="account-server">Sin cuenta conectada</span>
+        </article>
+        <article class="metric-card">
+          <p>Equity</p>
+          <strong id="equity-value">—</strong>
+          <span id="floating-pnl">P&amp;L flotante: —</span>
+        </article>
+        <article class="metric-card">
+          <p>Drawdown de sesión</p>
+          <strong id="drawdown-value">—</strong>
+          <span id="peak-equity">Pico de equity: —</span>
+        </article>
+        <article class="metric-card">
+          <p>Margen libre</p>
+          <strong id="free-margin-value">—</strong>
+          <span id="margin-value">Margen usado: —</span>
+        </article>
+      </section>
+
+      <section class="workspace-grid">
+        <article class="panel positions-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">En mercado</p>
+              <h2>Posiciones abiertas</h2>
+            </div>
+            <span id="positions-count" class="count-badge">0</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Símbolo</th>
+                  <th>Dirección</th>
+                  <th>Volumen</th>
+                  <th>Entrada / actual</th>
+                  <th>SL / TP</th>
+                  <th class="numeric">P&amp;L</th>
+                </tr>
+              </thead>
+              <tbody id="positions-body">
+                <tr><td class="empty-table" colspan="6">No hay posiciones abiertas.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <aside class="panel safety-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Protección</p>
+              <h2>Control de riesgo</h2>
+            </div>
+          </div>
+          <dl class="safety-list">
+            <div><dt>Modo de cuenta</dt><dd id="account-mode">—</dd></div>
+            <div><dt>Permiso de trading</dt><dd id="trade-permission">—</dd></div>
+            <div><dt>Protección demo</dt><dd id="demo-safety">—</dd></div>
+            <div><dt>Última señal</dt><dd id="last-signal">Aún no hay señales</dd></div>
+          </dl>
+          <button id="emergency-button" class="button button-danger" type="button">Cerrar todas las posiciones</button>
+          <p class="panel-note">Exige sesión activa y escribir <code>CLOSE ALL</code> antes de enviar la orden.</p>
+        </aside>
+      </section>
+
+      <section class="lower-grid">
+        <article class="panel signals-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Actividad entrante</p>
+              <h2>Señales recientes</h2>
+            </div>
+          </div>
+          <ol id="signals-list" class="timeline">
+            <li class="empty-state">Las señales que recibamos de TradingView aparecerán aquí.</li>
+          </ol>
+        </article>
+
+        <article class="panel stats-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Desde las 00:00 UTC</p>
+              <h2>Estadísticas</h2>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <div><span>Operaciones cerradas</span><strong id="closed-trades">0</strong></div>
+            <div><span>Tasa de acierto</span><strong id="win-rate">0%</strong></div>
+            <div><span>P&amp;L realizado</span><strong id="realized-pnl">—</strong></div>
+            <div><span>Profit factor</span><strong id="profit-factor">—</strong></div>
+          </div>
+        </article>
+
+        <article class="panel settings-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Ejecución</p>
+              <h2>Volumen y riesgo</h2>
+            </div>
+          </div>
+          <form id="settings-form" class="settings-form">
+            <label class="switch-row" for="fixed-volume">
+              <span><strong>Volumen fijo</strong><small>Desactívalo para calcular por riesgo.</small></span>
+              <input id="fixed-volume" name="use_fixed_volume" type="checkbox">
+            </label>
+            <div class="form-grid">
+              <label>Volumen por defecto<input id="default-volume" name="default_volume" type="number" min="0.01" step="0.01" required></label>
+              <label>Volumen máximo<input id="max-volume" name="max_volume" type="number" min="0.01" step="0.01" required></label>
+              <label>Riesgo por operación (%)<input id="risk-percent" name="risk_percent" type="number" min="0.01" max="100" step="0.01" required></label>
+              <label>SL por defecto (puntos)<input id="default-sl-points" name="default_sl_points" type="number" min="0" step="1" required></label>
+              <label>TP por defecto (puntos)<input id="default-tp-points" name="default_tp_points" type="number" min="0" step="1" required></label>
+            </div>
+            <button class="button button-primary" type="submit">Guardar ajustes</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="panel logs-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Diagnóstico</p>
+            <h2>Logs del bridge</h2>
+          </div>
+          <button id="logs-button" class="button button-quiet" type="button">Recargar logs</button>
+        </div>
+        <pre id="logs-output" aria-live="polite">Cargando logs…</pre>
+      </section>
+    </main>
+  </div>
+
+  <div id="login-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+    <form id="login-form" class="login-card">
+      <p class="eyebrow">Acceso local protegido</p>
+      <h2 id="login-title">Trading Bridge Dashboard</h2>
+      <p id="login-description">Introduce la contraseña configurada para el dashboard.</p>
+      <label for="dashboard-password">Contraseña</label>
+      <input id="dashboard-password" type="password" autocomplete="current-password" required>
+      <p id="login-error" class="form-error" role="alert"></p>
+      <button class="button button-primary" type="submit">Entrar al dashboard</button>
+      <p class="login-hint">El panel se ejecuta en tu ordenador. No introduzcas aquí la contraseña de tu bróker.</p>
+    </form>
+  </div>
+
+  <dialog id="emergency-dialog" class="emergency-dialog" aria-labelledby="emergency-title">
+    <form id="emergency-form" method="dialog">
+      <p class="eyebrow danger-label">Acción irreversible</p>
+      <h2 id="emergency-title">¿Cerrar todas las posiciones?</h2>
+      <p>Se enviará una orden de cierre para cada posición abierta en MT5. Esta acción no puede deshacerse.</p>
+      <label for="close-confirmation">Escribe <strong>CLOSE ALL</strong> para confirmar</label>
+      <input id="close-confirmation" type="text" autocomplete="off" spellcheck="false" placeholder="CLOSE ALL">
+      <p id="emergency-error" class="form-error" role="alert"></p>
+      <div class="dialog-actions">
+        <button id="cancel-emergency" class="button button-quiet" value="cancel" type="button">Cancelar</button>
+        <button id="confirm-emergency" class="button button-danger" type="submit" disabled>Cerrar todo ahora</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='dashboard.js') }}" defer></script>
+</body>
+</html>
