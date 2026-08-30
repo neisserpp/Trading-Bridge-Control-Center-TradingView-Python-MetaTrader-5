@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 """
@@ -73,8 +73,13 @@ app.config.update(
         CFG.get("dashboard_session_secret")
         or secrets.token_urlsafe(32)
     ),
+    # Local dashboard runs over plain HTTP (localhost/127.0.0.1).
+    # A Secure cookie is NOT sent by browsers over HTTP, which caused
+    # successful logins to immediately appear unauthenticated (401).
     SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_PATH="/",
 )
 
 
@@ -84,16 +89,21 @@ app.config.update(
 
 @app.after_request
 def dashboard_cors(response):
-    """Allow local React/Vite dashboard to call the bridge."""
+    """Allow the React/Vite dashboard to call the bridge."""
 
     origin = request.headers.get("Origin", "")
 
     allowed_origins = {
         "http://localhost:8080",
-        "http://127.0.0.1:8080", 
+        "http://127.0.0.1:8080",
         "http://192.168.1.140:8080",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+
+        # Vercel deployments
+        "https://trading-bridge-control-center.vercel.app",
+        "https://trading-bridge-control-center-79cwkeose.vercel.app",
+        "https://trading-bridge-control-center-cdj03dg4f.vercel.app",
     }
 
     if origin in allowed_origins:
@@ -111,7 +121,6 @@ def dashboard_cors(response):
 
 
 
-
 # ============================================================
 # GLOBAL SETTINGS
 # ============================================================
@@ -124,10 +133,6 @@ PASSPHRASE = str(
     CFG.get("passphrase", "CHANGE_ME")
 )
 
-DASHBOARD_PASSWORD = str(
-    CFG.get("dashboard_password", "")
-).strip()
-
 DASHBOARD_SESSIONS: Dict[str, float] = {}
 
 DASHBOARD_SESSION_TTL = int(
@@ -136,6 +141,8 @@ DASHBOARD_SESSION_TTL = int(
         3600
     )
 )
+
+
 
 SEEN_IDS: Dict[str, float] = {}
 
@@ -194,7 +201,7 @@ def current_dashboard_password() -> str:
     ):
         pass
 
-    return DASHBOARD_PASSWORD or PASSPHRASE
+    return PASSPHRASE
 
 
 def dashboard_password_configured() -> bool:
@@ -304,7 +311,7 @@ def record_dashboard_event(
             "time": utc_iso(),
             "id": "dashboard",
             "action": action,
-            "symbol": "â€”",
+            "symbol": "—",
             "ok": ok,
             "duplicate": False,
             "detail": detail[:240],
@@ -570,9 +577,12 @@ def today_trade_statistics() -> Dict[str, Any]:
 # MT5 INITIALIZATION
 # ============================================================
 
+MT5_TERMINAL_PATH = r"C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe"
+
+
 def mt5_init_ok() -> bool:
 
-    if not mt5.initialize():
+    if not mt5.initialize(MT5_TERMINAL_PATH):
 
         log.error(
             "MT5 initialize failed: %s",
@@ -4068,4 +4078,5 @@ if __name__ == "__main__":
 
 
     
+
 
